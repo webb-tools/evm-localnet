@@ -361,26 +361,6 @@ async function main() {
       return;
     }
 
-    if (cmd.match(/^spam chain a (\d+)$/)) {
-      const txs = parseInt(cmd.match(/^spam chain a (\d+)$/)?.[1] ?? '1');
-      console.log(`Spamming Chain A with ${txs} Tx, please wait...`);
-      for (let i = 0; i < txs; i++) {
-        const deposit2 = await chainASignatureAnchor.deposit(chainB.chainId);
-        console.log('Deposit on chain A (signature): ', deposit2.deposit);
-      }
-      return;
-    }
-
-    if (cmd.match(/^spam chain b (\d+)$/)) {
-      const txs = parseInt(cmd.match(/^spam chain b (\d+)$/)?.[1] ?? '1');
-      console.log(`Spamming Chain B with ${txs}, please wait...`);
-      for (let i = 0; i < txs; i++) {
-        const deposit2 = await chainBSignatureAnchor.deposit(chainA.chainId);
-        console.log('Deposit on chain B (signature): ', deposit2.deposit);
-      }
-      return;
-    }
-
     if (cmd.startsWith('root on chain a')) {
       console.log('Root on chain A (signature), please wait...');
       const root2 = await chainASignatureAnchor.contract.getLastRoot();
@@ -422,9 +402,6 @@ function printAvailableCommands() {
   console.log('  withdraw on chain b');
   console.log('  root on chain a');
   console.log('  root on chain b');
-  console.log('  spam chain a <txs>');
-  console.log('  spam chain b <txs>');
-  console.log('  transfer ownership to <pubkey>');
   console.log('  exit');
 }
 
