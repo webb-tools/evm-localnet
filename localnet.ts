@@ -387,6 +387,40 @@ async function main() {
       return;
     }
 
+    if (cmd.startsWith('print governor on chain a')) {
+      const governor = chainASignatureBridge.governor;
+      console.log('governor in chainASigBridge class is: ', governor.address);
+      const walletAddress = await chainASignatureBridge.contract.governor();
+      console.log('governor in contract is: ', walletAddress);
+    }
+
+    if (cmd.startsWith('print governor on chain b')) {
+      const governor = chainBSignatureBridge.governor;
+      console.log('governor in chainASigBridge class is: ', governor.address);
+      const walletAddress = await chainBSignatureBridge.contract.governor();
+      console.log('governor in contract is: ', walletAddress);
+    }
+
+    if (cmd.startsWith('mint wrappable token on a')) {
+      const address = cmd.split('"')[1];
+      await chainAToken.mintTokens(address, '100000000000000000000');
+    }
+
+    if (cmd.startsWith('mint wrappable token on b')) {
+      const address = cmd.split('"')[1];
+      await chainBToken.mintTokens(address, '100000000000000000000');
+    }
+
+    if (cmd.startsWith('mint governed token on a')) {
+      const address = cmd.split('"')[1];
+      await webbASignatureToken.mintTokens(address, '100000000000000000000');
+    }
+
+    if (cmd.startsWith('mint governed token on b')) {
+      const address = cmd.split('"')[1];
+      await webbBSignatureToken.mintTokens(address, '100000000000000000000');
+    }
+
     console.log('Unknown command: ', cmd);
     printAvailableCommands();
   });
@@ -402,6 +436,12 @@ function printAvailableCommands() {
   console.log('  withdraw on chain b');
   console.log('  root on chain a');
   console.log('  root on chain b');
+  console.log('  print governor on chain a');
+  console.log('  print governor on chain b');
+  console.log('  mint wrappable token on a to "<address>"')
+  console.log('  mint wrappable token on b to "<address>"')
+  console.log('  mint governed token on a to "<address>"')
+  console.log('  mint governed token on b to "<address>"')
   console.log('  exit');
 }
 
