@@ -9,6 +9,7 @@ import path from 'path';
 import { IAnchorDeposit } from '@webb-tools/interfaces';
 import { Anchor } from '@webb-tools/anchors';
 import ganache from 'ganache';
+import { attachNewAnchor } from './attachNewAnchor';
 
 export type GanacheAccounts = {
   balance: string;
@@ -69,45 +70,74 @@ class LocalChain {
     return MintableToken.createToken(name, symbol, wallet);
   }
 
-  public async deploySignatureBridge(
-    otherChain: LocalChain,
-    localToken: MintableToken,
-    otherToken: MintableToken,
-    localWallet: ethers.Wallet,
-    otherWallet: ethers.Wallet
+  // It is expected that parameters are passed with the same indices of arrays.
+  public static async deploySignatureBridge(
+    chains: LocalChain[],
+    tokens: MintableToken[],
+    wallets: ethers.Wallet[]
   ): Promise<SignatureBridge> {
-    localWallet.connect(this.provider());
-    otherWallet.connect(otherChain.provider());
+    // localWallet.connect(this.provider());
+    // otherWallet.connect(otherChain.provider());
+    // const bridgeInput = {
+    //   anchorInputs: {
+    //     asset: {
+    //       [this.chainId]: [localToken.contract.address],
+    //       [otherChain.chainId]: [otherToken.contract.address],
+    //     },
+    //     anchorSizes: [ethers.utils.parseEther('1')],
+    //   },
+    //   chainIDs: [this.chainId, otherChain.chainId],
+    // };
+    // const deployerConfig = {
+    //   [this.chainId]: localWallet,
+    //   [otherChain.chainId]: otherWallet,
+    // };
+    // const governorConfig = {
+    //   [this.chainId]: localWallet,
+    //   [otherChain.chainId]: otherWallet,
+    // }
+
+    let assetRecord: Record<number, string[]> = {};
+    let deployers: Record<number, ethers.Wallet> = {};
+    let chainIdsArray: number[] = [];
+
+    for (let i=0; i<chains.length; i++) {
+      wallets[i].connect(chains[i].provider());
+      assetRecord[chains[i].chainId] = [tokens[i].contract.address];
+      deployers[chains[i].chainId] = wallets[i];
+      chainIdsArray.push(chains[i].chainId);
+    }
+
     const bridgeInput = {
       anchorInputs: {
-        asset: {
-          [this.chainId]: [localToken.contract.address],
-          [otherChain.chainId]: [otherToken.contract.address],
-        },
+        asset: assetRecord,
         anchorSizes: [ethers.utils.parseEther('1')],
       },
-      chainIDs: [this.chainId, otherChain.chainId],
-    };
-    const deployerConfig = {
-      [this.chainId]: localWallet,
-      [otherChain.chainId]: otherWallet,
-    };
-    const governorConfig = {
-      [this.chainId]: localWallet,
-      [otherChain.chainId]: otherWallet,
+      chainIDs: chainIdsArray,
     }
+    const deployerConfig = { 
+      ...deployers
+    }
+    const governorConfig = {
+      ...deployers
+    }
+
+    console.log('bridgeInput: ', bridgeInput);
+    console.log('deployerConfig: ', deployerConfig);
+    console.log('governorConfig: ', deployerConfig);
+
     const zkComponents = await fetchComponentsFromFilePaths(
       path.resolve(
         __dirname,
-        './protocol-solidity-fixtures/fixtures/anchor/2/poseidon_anchor_2.wasm'
+        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/poseidon_anchor_${chains.length}.wasm`
       ),
       path.resolve(
         __dirname,
-        './protocol-solidity-fixtures/fixtures/anchor/2/witness_calculator.js'
+        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/witness_calculator.js`
       ),
       path.resolve(
         __dirname,
-        './protocol-solidity-fixtures/fixtures/anchor/2/circuit_final.zkey'
+        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/circuit_final.zkey`
       )
     );
 
@@ -155,15 +185,42 @@ async function main() {
       secretKey: '0xc0d375903fd6f6ad3edafc2c5428900c0757ce1da10e5dd864fe387b32b91d7e',
     },
   ]);
+  const chainC = new LocalChain('Demeter', 5003, [
+    {
+      balance: ethers.utils.parseEther('1000').toHexString(),
+      secretKey: relayerPrivateKey,
+    },
+    {
+      balance: ethers.utils.parseEther('1000').toHexString(),
+      secretKey: senderPrivateKey,
+    },
+    {
+      balance: ethers.utils.parseEther('1000').toHexString(),
+      secretKey: '0xc0d375903fd6f6ad3edafc2c5428900c0757ce1da10e5dd864fe387b32b91d7e',
+    },
+  ]);
   const chainAWallet = new ethers.Wallet(relayerPrivateKey, chainA.provider());
   const chainBWallet = new ethers.Wallet(relayerPrivateKey, chainB.provider());
+  const chainCWallet = new ethers.Wallet(relayerPrivateKey, chainC.provider());
 
   let chainADeposits: IAnchorDeposit[] = [];
   let chainBDeposits: IAnchorDeposit[] = [];
+  let chainCDeposits: IAnchorDeposit[] = [];
 
   // do a random transfer on chainA to a random address
-  // se we do have different nonce for that account.
+  // do it on chainB twice.
+  // so we do have different nonce for that account.
   let tx = await chainAWallet.sendTransaction({
+    to: '0x0000000000000000000000000000000000000000',
+    value: ethers.utils.parseEther('0.001'),
+  });
+  await tx.wait();
+  tx = await chainBWallet.sendTransaction({
+    to: '0x0000000000000000000000000000000000000000',
+    value: ethers.utils.parseEther('0.001'),
+  });
+  await tx.wait();
+  tx = await chainBWallet.sendTransaction({
     to: '0x0000000000000000000000000000000000000000',
     value: ethers.utils.parseEther('0.001'),
   });
@@ -172,19 +229,23 @@ async function main() {
   const chainAToken = await chainA.deployToken('ChainA', 'webbA', chainAWallet);
   // Deploy the token on chainB
   const chainBToken = await chainB.deployToken('ChainB', 'webbB', chainBWallet);
+  // Deploy the token on chainC
+  const chainCToken = await chainC.deployToken('ChainC', 'webbC', chainCWallet);
 
   // Deploy the signature bridge.
-  const signatureBridge = await chainA.deploySignatureBridge(
-    chainB,
-    chainAToken,
-    chainBToken,
-    chainAWallet,
-    chainBWallet
+  const signatureBridge = await LocalChain.deploySignatureBridge(
+    [chainA, chainB, chainC],
+    [chainAToken, chainBToken, chainCToken],
+    [chainAWallet, chainBWallet, chainCWallet]
   );
+
   // get chainA bridge
   const chainASignatureBridge = signatureBridge.getBridgeSide(chainA.chainId)!;
   // get chainB bridge
   const chainBSignatureBridge = signatureBridge.getBridgeSide(chainB.chainId)!;
+  // get chainC bridge
+  const chainCSignatureBridge = signatureBridge.getBridgeSide(chainC.chainId)!;
+
   // get the anchor on chainA
   const chainASignatureAnchor = signatureBridge.getAnchor(
     chainA.chainId,
@@ -205,6 +266,16 @@ async function main() {
   const chainBHandler = await chainBSignatureAnchor.getHandler();
   console.log('Chain B Handler address: ', chainBHandler)
   
+  // get the anchor on chainC
+  const chainCSignatureAnchor = signatureBridge.getAnchor(
+    chainC.chainId,
+    ethers.utils.parseEther('1')
+  )!;
+  await chainCSignatureAnchor.setSigner(chainCWallet);
+
+  const chainCHandler = await chainCSignatureAnchor.getHandler();
+  console.log('Chain C Handler address: ', chainCHandler)
+
   // approve token spending
   const webbASignatureTokenAddress = signatureBridge.getWebbTokenAddress(
     chainA.chainId
@@ -237,6 +308,19 @@ async function main() {
     ethers.utils.parseEther('1000')
   );
 
+  const webbCSignatureTokenAddress = signatureBridge.getWebbTokenAddress(chainC.chainId)!;
+
+  const webbCSignatureToken = await MintableToken.tokenFromAddress(
+    webbCSignatureTokenAddress,
+    chainCWallet
+  );
+  tx = await webbCSignatureToken.approveSpending(chainCSignatureAnchor.contract.address);
+  await tx.wait();
+  await webbCSignatureToken.mintTokens(
+    chainCWallet.address,
+    ethers.utils.parseEther('1000')
+  );
+
   console.log(
     'ChainA signature bridge (Hermes): ',
     chainASignatureBridge.contract.address
@@ -258,7 +342,20 @@ async function main() {
   );
   console.log('ChainBToken: ', chainBToken.contract.address);
   console.log('ChainB token Webb (Athena): ', webbBSignatureToken.contract.address);
+  console.log(' --- --- --- --- --- --- --- --- --- --- --- --- ---');
+  console.log(
+    'ChainC signature bridge (Demeter): ',
+    chainCSignatureBridge.contract.address
+  );
+  console.log(
+    'ChainC anchor (Demeter): ',
+    chainCSignatureAnchor.contract.address
+  );
+  console.log('ChainCToken: ', chainCToken.contract.address);
+  console.log('ChainC token Webb (Demeter): ', webbCSignatureToken.contract.address);
+
   console.log('\n');
+
   // stop the server on Ctrl+C or SIGINT singal
   process.on('SIGINT', () => {
     chainA.stop();
@@ -285,6 +382,9 @@ async function main() {
     '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
     ethers.utils.parseEther('1000')
   );
+
+  // Setup another anchor deployment, which attaches to the existing bridge / handler / hasher / verifier
+  await attachNewAnchor();
 
   // setup readline
   const rl = readline.createInterface({
