@@ -37,6 +37,7 @@ This Repository is meant to support a development environment for the anchor pro
 
 - Hermes: chainId 5001, 'chain a'
 - Athena: chainId 5002, 'chain b'
+- Demeter: chainId 5003, 'chain c'
 
 <h1 id="start"> Start </h1>
 
