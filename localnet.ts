@@ -76,27 +76,6 @@ class LocalChain {
     tokens: MintableToken[],
     wallets: ethers.Wallet[]
   ): Promise<SignatureBridge> {
-    // localWallet.connect(this.provider());
-    // otherWallet.connect(otherChain.provider());
-    // const bridgeInput = {
-    //   anchorInputs: {
-    //     asset: {
-    //       [this.chainId]: [localToken.contract.address],
-    //       [otherChain.chainId]: [otherToken.contract.address],
-    //     },
-    //     anchorSizes: [ethers.utils.parseEther('1')],
-    //   },
-    //   chainIDs: [this.chainId, otherChain.chainId],
-    // };
-    // const deployerConfig = {
-    //   [this.chainId]: localWallet,
-    //   [otherChain.chainId]: otherWallet,
-    // };
-    // const governorConfig = {
-    //   [this.chainId]: localWallet,
-    //   [otherChain.chainId]: otherWallet,
-    // }
-
     let assetRecord: Record<number, string[]> = {};
     let deployers: Record<number, ethers.Wallet> = {};
     let chainIdsArray: number[] = [];
@@ -363,28 +342,100 @@ async function main() {
   });
   printAvailableCommands();
 
-  await webbASignatureToken.mintTokens(
-    '0x510C6297cC30A058F41eb4AF1BFC9953EaD8b577',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbASignatureToken.mintTokens(
-    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbBSignatureToken.mintTokens(
-    '0x7758F98C1c487E5653795470eEab6C4698bE541b',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbBSignatureToken.mintTokens(
-    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
-    ethers.utils.parseEther('1000')
-  );
-
-  // Setup another anchor deployment, which attaches to the existing bridge / handler / hasher / verifier
+  // Setup another anchor deployment, which attaches to the existing bridge / handler / hasher / verifier / token
   await attachNewAnchor();
+
+  // mint the wrappable tokens
+  await chainAToken.mintTokens(
+    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
+    ethers.utils.parseEther('1000')
+  );
+
+  await chainBToken.mintTokens(
+    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
+    ethers.utils.parseEther('1000')
+  );
+
+  await chainCToken.mintTokens(
+    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
+    ethers.utils.parseEther('1000')
+  );
+
+  await chainAToken.mintTokens(
+    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
+    ethers.utils.parseEther('1000')
+  );
+
+  await chainBToken.mintTokens(
+    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
+    ethers.utils.parseEther('1000')
+  );
+
+  await chainCToken.mintTokens(
+    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
+    ethers.utils.parseEther('1000')
+  );
+
+  await chainAToken.mintTokens(
+    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
+    ethers.utils.parseEther('1000')
+  );
+
+  await chainBToken.mintTokens(
+    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
+    ethers.utils.parseEther('1000')
+  );
+
+  await chainCToken.mintTokens(
+    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
+    ethers.utils.parseEther('1000')
+  );
+
+  // Mint the governed tokens
+  await webbASignatureToken.mintTokens(
+    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
+    ethers.utils.parseEther('1000')
+  );
+
+  await webbBSignatureToken.mintTokens(
+    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
+    ethers.utils.parseEther('1000')
+  );
+
+  await webbCSignatureToken.mintTokens(
+    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
+    ethers.utils.parseEther('1000')
+  );
+
+  await webbASignatureToken.mintTokens(
+    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
+    ethers.utils.parseEther('1000')
+  );
+
+  await webbBSignatureToken.mintTokens(
+    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
+    ethers.utils.parseEther('1000')
+  );
+
+  await webbCSignatureToken.mintTokens(
+    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
+    ethers.utils.parseEther('1000')
+  );
+
+  await webbASignatureToken.mintTokens(
+    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
+    ethers.utils.parseEther('1000')
+  );
+
+  await webbBSignatureToken.mintTokens(
+    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
+    ethers.utils.parseEther('1000')
+  );
+
+  await webbCSignatureToken.mintTokens(
+    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
+    ethers.utils.parseEther('1000')
+  );
 
   // setup readline
   const rl = readline.createInterface({
