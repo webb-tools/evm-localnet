@@ -87,7 +87,7 @@ export async function attachNewAnchor() {
 
     await SignatureBridge.setPermissions(bridgeSide, [newAnchor]);
 
-    const tokenInstance = await GovernedTokenWrapper.connect(anchorTokens[chainIdType], governor);
+    const tokenInstance = GovernedTokenWrapper.connect(anchorTokens[chainIdType], governor);
 
     // grant minting rights to the anchor
     await tokenInstance.grantMinterRole(newAnchor.getAddress()); 

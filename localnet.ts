@@ -10,6 +10,7 @@ import { IAnchorDeposit } from '@webb-tools/interfaces';
 import { Anchor } from '@webb-tools/anchors';
 import ganache from 'ganache';
 import { attachNewAnchor } from './attachNewAnchor';
+import { fundAccounts } from './fundAccounts';
 
 export type GanacheAccounts = {
   balance: string;
@@ -345,96 +346,23 @@ async function main() {
   // Setup another anchor deployment, which attaches to the existing bridge / handler / hasher / verifier / token
   await attachNewAnchor();
 
-  // mint the wrappable tokens
-  await chainAToken.mintTokens(
-    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
-    ethers.utils.parseEther('1000')
-  );
-
-  await chainBToken.mintTokens(
-    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
-    ethers.utils.parseEther('1000')
-  );
-
-  await chainCToken.mintTokens(
-    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
-    ethers.utils.parseEther('1000')
-  );
-
-  await chainAToken.mintTokens(
-    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
-    ethers.utils.parseEther('1000')
-  );
-
-  await chainBToken.mintTokens(
-    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
-    ethers.utils.parseEther('1000')
-  );
-
-  await chainCToken.mintTokens(
-    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
-    ethers.utils.parseEther('1000')
-  );
-
-  await chainAToken.mintTokens(
-    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
-    ethers.utils.parseEther('1000')
-  );
-
-  await chainBToken.mintTokens(
-    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
-    ethers.utils.parseEther('1000')
-  );
-
-  await chainCToken.mintTokens(
-    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
-    ethers.utils.parseEther('1000')
-  );
-
-  // Mint the governed tokens
-  await webbASignatureToken.mintTokens(
-    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbBSignatureToken.mintTokens(
-    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbCSignatureToken.mintTokens(
-    '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbASignatureToken.mintTokens(
-    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbBSignatureToken.mintTokens(
-    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbCSignatureToken.mintTokens(
-    '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbASignatureToken.mintTokens(
-    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbBSignatureToken.mintTokens(
-    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
-    ethers.utils.parseEther('1000')
-  );
-
-  await webbCSignatureToken.mintTokens(
-    '0xd644f5331a6F26A7943CEEbB772e505cDDd21700',
-    ethers.utils.parseEther('1000')
+  // mint wrappable and governed tokens to pre-funded accounts
+  await fundAccounts(
+    {
+      [chainA.chainId]: chainAToken,
+      [chainB.chainId]: chainBToken,
+      [chainC.chainId]: chainCToken,
+    },
+    {
+      [chainA.chainId]: webbASignatureToken,
+      [chainB.chainId]: webbBSignatureToken,
+      [chainC.chainId]: webbCSignatureToken,
+    },
+    [
+      '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
+      '0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF',
+      '0xd644f5331a6F26A7943CEEbB772e505cDDd21700'
+    ]
   );
 
   // setup readline
