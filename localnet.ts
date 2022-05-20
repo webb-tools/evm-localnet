@@ -4,13 +4,15 @@ import readline from 'readline';
 import { ethers } from 'ethers';
 import { SignatureBridge } from '@webb-tools/bridges';
 import { MintableToken } from '@webb-tools/tokens';
-import { fetchComponentsFromFilePaths, getChainIdType } from '@webb-tools/utils';
+import { fetchComponentsFromFilePaths, getChainIdType, Keypair, randomBN, Utxo } from '@webb-tools/utils';
 import path from 'path';
-import { IAnchorDeposit } from '@webb-tools/interfaces';
-import { Anchor } from '@webb-tools/anchors';
-import ganache from 'ganache';
+import { IAnchorDeposit, IUTXOInput } from '@webb-tools/interfaces';
+import { Anchor, VAnchor } from '@webb-tools/anchors';
+import ganache, { Server } from 'ganache';
 import { attachNewAnchor } from './attachNewAnchor';
+import { attachNewVAnchor } from './attachNewVAnchor';
 import { fundAccounts } from './fundAccounts';
+import { deployVAnchorVerifier } from './deployVAnchorVerifier';
 
 export type GanacheAccounts = {
   balance: string;
@@ -42,21 +44,31 @@ export async function startGanacheServer(
 
 // Let's first define a localchain
 class LocalChain {
-  public readonly endpoint: string;
-  private readonly server: any;
-  public readonly chainId: number;
   constructor(
-    public readonly name: string,
-    public readonly evmId: number,
-    readonly initalBalances: GanacheAccounts[]
+    public readonly endpoint: string,
+    public readonly chainId: number,
+    private readonly server: Server<"ethereum">,
   ) {
-    this.endpoint = `http://localhost:${evmId}`;
-    this.chainId = getChainIdType(evmId);
-    this.server = startGanacheServer(evmId, evmId, initalBalances);
+  }
+
+  public static async init(
+    name: string,
+    evmId: number,
+    initalBalances: GanacheAccounts[]
+  ): Promise<LocalChain> {
+    const endpoint = `http://localhost:${evmId}`;
+    const chainId = getChainIdType(evmId);
+    const server = await startGanacheServer(evmId, evmId, initalBalances);
+    const chain = new LocalChain(endpoint, chainId, server);
+    return chain;
   }
 
   public provider(): ethers.providers.WebSocketProvider {
     return new ethers.providers.WebSocketProvider(this.endpoint);
+  }
+
+  public web3Provider(): ethers.providers.Web3Provider {
+    return new ethers.providers.Web3Provider(this.server.provider);
   }
 
   public async stop() {
@@ -137,7 +149,7 @@ async function main() {
     '0x0000000000000000000000000000000000000000000000000000000000000002';
   const recipient = '0xd644f5331a6F26A7943CEEbB772e505cDDd21700';
 
-  const chainA = new LocalChain('Hermes', 5001, [
+  const chainA = await LocalChain.init('Hermes', 5001, [
     {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: relayerPrivateKey,
@@ -151,7 +163,7 @@ async function main() {
       secretKey: '0xc0d375903fd6f6ad3edafc2c5428900c0757ce1da10e5dd864fe387b32b91d7e',
     },
   ]);
-  const chainB = new LocalChain('Athena', 5002, [
+  const chainB = await LocalChain.init('Athena', 5002, [
     {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: relayerPrivateKey,
@@ -165,7 +177,7 @@ async function main() {
       secretKey: '0xc0d375903fd6f6ad3edafc2c5428900c0757ce1da10e5dd864fe387b32b91d7e',
     },
   ]);
-  const chainC = new LocalChain('Demeter', 5003, [
+  const chainC = await LocalChain.init('Demeter', 5003, [
     {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: relayerPrivateKey,
@@ -186,6 +198,10 @@ async function main() {
   let chainADeposits: IAnchorDeposit[] = [];
   let chainBDeposits: IAnchorDeposit[] = [];
   let chainCDeposits: IAnchorDeposit[] = [];
+
+  let vanchorAUTXOs: IUTXOInput[] = [];
+  let vanchorBUTXOs: IUTXOInput[] = [];
+  let vanchorCUTXOs: IUTXOInput[] = [];
 
   // do a random transfer on chainA to a random address
   // do it on chainB twice.
@@ -345,6 +361,14 @@ async function main() {
 
   // Setup another anchor deployment, which attaches to the existing bridge / handler / hasher / verifier / token
   await attachNewAnchor();
+
+  // Do a VAnchor Deployment
+  await deployVAnchorVerifier();
+  await attachNewVAnchor(false);
+
+  // Give token permissions to the newly created VAnchor:
+  // await webbASignatureToken.approveSpending('0xb824C5F99339C7E486a1b452B635886BE82bc8b7');
+  // await webbBSignatureToken.approveSpending('0xFEe587E68c470DAE8147B46bB39fF230A29D4769');
 
   // mint wrappable and governed tokens to pre-funded accounts
   await fundAccounts(
