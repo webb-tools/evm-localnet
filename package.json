@@ -18,6 +18,8 @@
     "@webb-tools/tokens": "0.1.14",
     "@webb-tools/utils": "0.1.8",
     "@webb-tools/vbridge": "0.1.15",
+    "@webb-tools/sdk-core": "file:../webb.js/packages/sdk-core/build",
+    "@webb-tools/wasm-utils": "file:../webb.js/packages/wasm-utils/build",
     "dotenv": "^10.0.0",
     "ethers": "5.5.1",
     "ganache": "7.1.0",
