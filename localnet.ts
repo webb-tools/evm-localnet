@@ -356,6 +356,7 @@ async function main() {
   process.on('SIGINT', () => {
     chainA.stop();
     chainB.stop();
+    chainC.stop();
   });
   printAvailableCommands();
 
