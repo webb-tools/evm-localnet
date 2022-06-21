@@ -8,7 +8,7 @@ import { VAnchor, AnchorHandler } from "@webb-tools/anchors";
 import path from "path";
 import { GovernedTokenWrapper } from '@webb-tools/tokens';
 
-export async function attachNewVAnchor(isEightSided: boolean) {
+export async function attachNewVAnchor(isEightSided: boolean): Promise<Record<number, VAnchor>> {
   const chainIdTypeA = getChainIdType(5001);
   const chainIdTypeB = getChainIdType(5002);
   const chainIdTypeC = getChainIdType(5003);
@@ -84,10 +84,10 @@ export async function attachNewVAnchor(isEightSided: boolean) {
   let anchorVerifiers: Record<number, string> = {
     [chainIdTypeA]: '0x4ddcaefaD4Cd01f6dE911c33777100B1c530A85e',
     [chainIdTypeB]: '0xdB587ef6aaA16b5719CDd3AaB316F0E70473e9Be',
-    // [chainIdTypeC]: '0xe3a0c8943356982867FC2b93739BD0f70C4B3a70',
+    [chainIdTypeC]: '0xe3a0c8943356982867FC2b93739BD0f70C4B3a70',
   };
 
-  let anchors: VAnchor[] = [];
+  let anchors: Record<number, VAnchor> = {};
 
   for (let chainIdTypeStr of Object.keys(anchorVerifiers)) {
     const chainIdType = Number(chainIdTypeStr);
@@ -122,6 +122,8 @@ export async function attachNewVAnchor(isEightSided: boolean) {
     await tokenInstance.grantMinterRole(newAnchor.getAddress()); 
 
     console.log(`new anchor: ${newAnchor.getAddress()} on chain ${chainIdType}`)
-    anchors.push(newAnchor);
+    anchors[chainIdType] = newAnchor;
   }
+
+  return anchors;
 }
