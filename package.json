@@ -6,18 +6,28 @@
   "author": "Webb Developers <drew@webb.tools>",
   "license": "MIT",
   "scripts": {
-    "start": "npx ts-node localnet.ts"
+    "start": "npx ts-node localnet.ts",
+    "blank": "npx ts-node blanknet.ts"
+  },
+  "resolutions": {
+    "@webb-tools/anchors": "0.2.1",
+    "@webb-tools/bridges": "0.2.1",
+    "@webb-tools/contracts": "0.2.1",
+    "@webb-tools/interfaces": "0.2.1",
+    "@webb-tools/tokens": "0.2.1",
+    "@webb-tools/utils": "0.2.1",
+    "@webb-tools/vbridge": "0.2.1"
   },
   "dependencies": {
-    "@webb-tools/protocol-solidity": "0.1.16",
-    "@webb-tools/anchors": "0.1.15",
-    "@webb-tools/bridges": "0.1.15",
-    "@webb-tools/contracts": "0.1.11",
-    "@webb-tools/interfaces": "0.1.12",
-    "@webb-tools/merkle-tree": "0.1.15",
-    "@webb-tools/tokens": "0.1.14",
-    "@webb-tools/utils": "0.1.8",
-    "@webb-tools/vbridge": "0.1.15",
+    "@webb-tools/sdk-core": "0.1.4-87",
+    "@webb-tools/test-utils": "0.1.4-87",
+    "@webb-tools/anchors": "0.2.1",
+    "@webb-tools/bridges": "0.2.1",
+    "@webb-tools/contracts": "0.2.1",
+    "@webb-tools/interfaces": "0.2.1",
+    "@webb-tools/tokens": "0.2.1",
+    "@webb-tools/utils": "0.2.1",
+    "@webb-tools/vbridge": "0.2.1",
     "dotenv": "^10.0.0",
     "ethers": "5.5.1",
     "ganache": "7.1.0",
