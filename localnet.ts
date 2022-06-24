@@ -2,129 +2,21 @@
 require('dotenv').config();
 import readline from 'readline';
 import { ethers } from 'ethers';
-import { SignatureBridge } from '@webb-tools/bridges';
-import { GovernedTokenWrapper, MintableToken } from '@webb-tools/tokens';
-import { fetchComponentsFromFilePaths, getChainIdType } from '@webb-tools/utils';
-import path from 'path';
-import { IAnchorDeposit, IUTXOInput } from '@webb-tools/interfaces';
-import { Anchor, VAnchor } from '@webb-tools/anchors';
-import { Server } from 'ganache';
+import { MintableToken } from '@webb-tools/tokens';
+import { getChainIdType } from '@webb-tools/utils';
+import { IAnchorDeposit } from '@webb-tools/interfaces';
+import { Anchor } from '@webb-tools/anchors';
 import { attachNewAnchor } from './attachNewAnchor';
 import { attachNewVAnchor } from './attachNewVAnchor';
 import { fundAccounts } from './fundAccounts';
 import { deployVAnchorVerifier } from './deployVAnchorVerifier';
-import { startGanacheServer } from '@webb-tools/test-utils';
 import { CircomUtxo } from '@webb-tools/sdk-core';
+import { LocalChain } from './localChain';
 
 export type GanacheAccounts = {
   balance: string;
   secretKey: string;
 };
-
-// Let's first define a localchain
-class LocalChain {
-  constructor(
-    public readonly endpoint: string,
-    public readonly chainId: number,
-    private readonly server: Server<"ethereum">,
-  ) {
-  }
-
-  public static async init(
-    name: string,
-    evmId: number,
-    initalBalances: GanacheAccounts[]
-  ): Promise<LocalChain> {
-    const endpoint = `http://localhost:${evmId}`;
-    const chainId = getChainIdType(evmId);
-    const server = await startGanacheServer(evmId, evmId, initalBalances, {
-      quiet: false,
-      miner: {
-        blockTime: 1,
-      },
-    });
-    const chain = new LocalChain(endpoint, chainId, server);
-    return chain;
-  }
-
-  public provider(): ethers.providers.WebSocketProvider {
-    return new ethers.providers.WebSocketProvider(this.endpoint);
-  }
-
-  public web3Provider(): ethers.providers.Web3Provider {
-    return new ethers.providers.Web3Provider(this.server.provider);
-  }
-
-  public async stop() {
-    this.server.close();
-  }
-
-  public async deployToken(
-    name: string,
-    symbol: string,
-    wallet: ethers.Signer
-  ): Promise<MintableToken> {
-    return MintableToken.createToken(name, symbol, wallet);
-  }
-
-  // It is expected that parameters are passed with the same indices of arrays.
-  public static async deploySignatureBridge(
-    chains: LocalChain[],
-    tokens: MintableToken[],
-    wallets: ethers.Wallet[]
-  ): Promise<SignatureBridge> {
-    let assetRecord: Record<number, string[]> = {};
-    let deployers: Record<number, ethers.Wallet> = {};
-    let chainIdsArray: number[] = [];
-
-    for (let i=0; i<chains.length; i++) {
-      wallets[i].connect(chains[i].provider());
-      assetRecord[chains[i].chainId] = [tokens[i].contract.address];
-      deployers[chains[i].chainId] = wallets[i];
-      chainIdsArray.push(chains[i].chainId);
-    }
-
-    const bridgeInput = {
-      anchorInputs: {
-        asset: assetRecord,
-        anchorSizes: [ethers.utils.parseEther('1')],
-      },
-      chainIDs: chainIdsArray,
-    }
-    const deployerConfig = { 
-      ...deployers
-    }
-    const governorConfig = {
-      ...deployers
-    }
-
-    console.log('bridgeInput: ', bridgeInput);
-    console.log('deployerConfig: ', deployerConfig);
-    console.log('governorConfig: ', deployerConfig);
-
-    const zkComponents = await fetchComponentsFromFilePaths(
-      path.resolve(
-        __dirname,
-        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/poseidon_anchor_${chains.length}.wasm`
-      ),
-      path.resolve(
-        __dirname,
-        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/witness_calculator.js`
-      ),
-      path.resolve(
-        __dirname,
-        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/circuit_final.zkey`
-      )
-    );
-
-    return SignatureBridge.deployFixedDepositBridge(
-      bridgeInput,
-      deployerConfig,
-      governorConfig,
-      zkComponents
-    );
-  }
-}
 
 async function main() {
   const relayerPrivateKey =
@@ -180,11 +72,6 @@ async function main() {
 
   let chainADeposits: IAnchorDeposit[] = [];
   let chainBDeposits: IAnchorDeposit[] = [];
-  let chainCDeposits: IAnchorDeposit[] = [];
-
-  let vanchorAUTXOs: IUTXOInput[] = [];
-  let vanchorBUTXOs: IUTXOInput[] = [];
-  let vanchorCUTXOs: IUTXOInput[] = [];
 
   // do a random transfer on chainA to a random address
   // do it on chainB twice.
@@ -312,8 +199,47 @@ async function main() {
   await attachNewAnchor();
 
   // Do a VAnchor Deployment
-  await deployVAnchorVerifier();
-  const vanchors = await attachNewVAnchor(true);
+  const verifiers = await deployVAnchorVerifier(
+    {
+      [chainA.chainId]: chainAWallet,
+      [chainB.chainId]: chainBWallet,
+      [chainC.chainId]: chainCWallet,
+    }
+  );
+  const hashers = {
+    [chainA.chainId]: '0xA3183498b579bd228aa2B62101C40CC1da978F24',
+    [chainB.chainId]: '0x63f58053c9499E1104a6f6c6d2581d6D83067EEB',
+    [chainC.chainId]: '0x5CF7F96627F3C9903763d128A1cc5D97556A6b99',
+  };
+  const bridgeSides = {
+    [chainA.chainId]: chainASignatureBridge.contract.address,
+    [chainB.chainId]: chainBSignatureBridge.contract.address,
+    [chainC.chainId]: chainCSignatureBridge.contract.address,
+  }
+  const handlers = {
+    [chainA.chainId]: chainAHandler,
+    [chainB.chainId]: chainBHandler,
+    [chainC.chainId]: chainCHandler,
+  }
+  const tokens = {
+    [chainA.chainId]: chainAToken.contract.address,
+    [chainB.chainId]: chainBToken.contract.address,
+    [chainC.chainId]: chainCToken.contract.address
+  };
+  const wallets = {
+    [chainA.chainId]: chainAWallet,
+    [chainB.chainId]: chainBWallet,
+    [chainC.chainId]: chainCWallet,
+  }
+
+  const vanchors = await attachNewVAnchor(
+    tokens,
+    bridgeSides,
+    hashers,
+    handlers,
+    verifiers,
+    wallets
+  );
 
   // Give token permissions to the newly created VAnchor:
   // await webbASignatureToken.approveSpending('0xb824C5F99339C7E486a1b452B635886BE82bc8b7');
@@ -517,6 +443,7 @@ async function main() {
       // shutdown the servers
       await chainA.stop();
       await chainB.stop();
+      await chainC.stop();
       rl.close();
       return;
     }
