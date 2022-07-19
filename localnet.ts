@@ -4,12 +4,7 @@ import readline from 'readline';
 import { ethers } from 'ethers';
 import { MintableToken } from '@webb-tools/tokens';
 import { getChainIdType } from '@webb-tools/utils';
-import { IAnchorDeposit } from '@webb-tools/interfaces';
-import { Anchor } from '@webb-tools/anchors';
-import { attachNewAnchor } from './attachNewAnchor';
-import { attachNewVAnchor } from './attachNewVAnchor';
 import { fundAccounts } from './fundAccounts';
-import { deployVAnchorVerifier } from './deployVAnchorVerifier';
 import { CircomUtxo } from '@webb-tools/sdk-core';
 import { LocalChain } from './localChain';
 
@@ -70,9 +65,6 @@ async function main() {
   const chainBWallet = new ethers.Wallet(relayerPrivateKey, chainB.provider());
   const chainCWallet = new ethers.Wallet(relayerPrivateKey, chainC.provider());
 
-  let chainADeposits: IAnchorDeposit[] = [];
-  let chainBDeposits: IAnchorDeposit[] = [];
-
   // do a random transfer on chainA to a random address
   // do it on chainB twice.
   // so we do have different nonce for that account.
@@ -99,24 +91,23 @@ async function main() {
   const chainCToken = await chainC.deployToken('ChainC', 'webbC', chainCWallet);
 
   // Deploy the signature bridge.
-  const signatureBridge = await LocalChain.deploySignatureBridge(
+  const signatureBridge = await LocalChain.deployVBridge(
     [chainA, chainB, chainC],
     [chainAToken, chainBToken, chainCToken],
     [chainAWallet, chainBWallet, chainCWallet]
   );
 
   // get chainA bridge
-  const chainASignatureBridge = signatureBridge.getBridgeSide(chainA.chainId)!;
+  const chainASignatureBridge = signatureBridge.getVBridgeSide(chainA.chainId)!;
   // get chainB bridge
-  const chainBSignatureBridge = signatureBridge.getBridgeSide(chainB.chainId)!;
+  const chainBSignatureBridge = signatureBridge.getVBridgeSide(chainB.chainId)!;
   console.log('sigBridgeB address: ', chainBSignatureBridge.contract.address);
   // get chainC bridge
-  const chainCSignatureBridge = signatureBridge.getBridgeSide(chainC.chainId)!;
+  const chainCSignatureBridge = signatureBridge.getVBridgeSide(chainC.chainId)!;
 
   // get the anchor on chainA
-  const chainASignatureAnchor = signatureBridge.getAnchor(
+  const chainASignatureAnchor = signatureBridge.getVAnchor(
     chainA.chainId,
-    ethers.utils.parseEther('1')
   )!;
   await chainASignatureAnchor.setSigner(chainAWallet);
 
@@ -124,9 +115,8 @@ async function main() {
   console.log('Chain A Handler address: ', chainAHandler)
 
   // get the anchor on chainB
-  const chainBSignatureAnchor = signatureBridge.getAnchor(
+  const chainBSignatureAnchor = signatureBridge.getVAnchor(
     chainB.chainId,
-    ethers.utils.parseEther('1')
   )!;
   await chainBSignatureAnchor.setSigner(chainBWallet);
 
@@ -134,9 +124,8 @@ async function main() {
   console.log('Chain B Handler address: ', chainBHandler)
   
   // get the anchor on chainC
-  const chainCSignatureAnchor = signatureBridge.getAnchor(
+  const chainCSignatureAnchor = signatureBridge.getVAnchor(
     chainC.chainId,
-    ethers.utils.parseEther('1')
   )!;
   await chainCSignatureAnchor.setSigner(chainCWallet);
 
@@ -195,52 +184,6 @@ async function main() {
     chainC.stop();
   });
 
-  // Setup another anchor deployment, which attaches to the existing bridge / handler / hasher / verifier / token
-  await attachNewAnchor();
-
-  // Do a VAnchor Deployment
-  const verifiers = await deployVAnchorVerifier(
-    {
-      [chainA.chainId]: chainAWallet,
-      [chainB.chainId]: chainBWallet,
-      [chainC.chainId]: chainCWallet,
-    }
-  );
-  const hashers = {
-    [chainA.chainId]: '0xA3183498b579bd228aa2B62101C40CC1da978F24',
-    [chainB.chainId]: '0x63f58053c9499E1104a6f6c6d2581d6D83067EEB',
-    [chainC.chainId]: '0x5CF7F96627F3C9903763d128A1cc5D97556A6b99',
-  };
-  const bridgeSides = {
-    [chainA.chainId]: chainASignatureBridge.contract.address,
-    [chainB.chainId]: chainBSignatureBridge.contract.address,
-    [chainC.chainId]: chainCSignatureBridge.contract.address,
-  }
-  const handlers = {
-    [chainA.chainId]: chainAHandler,
-    [chainB.chainId]: chainBHandler,
-    [chainC.chainId]: chainCHandler,
-  }
-  const tokens = {
-    [chainA.chainId]: chainAToken.contract.address,
-    [chainB.chainId]: chainBToken.contract.address,
-    [chainC.chainId]: chainCToken.contract.address
-  };
-  const wallets = {
-    [chainA.chainId]: chainAWallet,
-    [chainB.chainId]: chainBWallet,
-    [chainC.chainId]: chainCWallet,
-  }
-
-  const vanchors = await attachNewVAnchor(
-    tokens,
-    bridgeSides,
-    hashers,
-    handlers,
-    verifiers,
-    wallets
-  );
-
   // Give token permissions to the newly created VAnchor:
   // await webbASignatureToken.approveSpending('0xb824C5F99339C7E486a1b452B635886BE82bc8b7');
   // await webbBSignatureToken.approveSpending('0xFEe587E68c470DAE8147B46bB39fF230A29D4769');
@@ -275,25 +218,6 @@ async function main() {
   rl.on('line', async (cmdRaw) => {
     const cmd = cmdRaw.trim();
 
-    // check if cmd is deposit chainA
-    if (cmd.startsWith('fixed deposit on chain a')) {
-      console.log('Depositing Chain A, please wait...');
-      const deposit2 = await chainASignatureAnchor.deposit(chainB.chainId);
-      chainADeposits.push(deposit2);
-      console.log('Deposit on chain A (signature): ', deposit2);
-      // await signatureBridge.updateLinkedAnchors(chainASignatureAnchor);
-      return;
-    }
-
-    if (cmd.startsWith('fixed deposit on chain b')) {
-      console.log('Depositing Chain B, please wait...');
-      const deposit2 = await chainBSignatureAnchor.deposit(chainA.chainId);
-      chainBDeposits.push(deposit2);
-      console.log('Deposit on chain B (signature): ', deposit2);
-      // await signatureBridge.updateLinkedAnchors(chainASignatureAnchor);
-      return;
-    }
-
     if (cmd.startsWith('variable deposit on chain a')) {
       const utxo = await CircomUtxo.generateUtxo({
         curve: 'Bn254',
@@ -303,25 +227,14 @@ async function main() {
         amount: '10000000000',
       })
 
-      await vanchors[chainA.chainId].transact(
+      await signatureBridge.transact(
         [],
         [utxo],
-        {},
         '0',
         '0',
-        '0'
+        '0',
+        chainAWallet
       );
-    }
-
-    if (cmd.startsWith('relay from a to b')) {
-      await chainASignatureAnchor.update();
-      console.log('updated');
-      await signatureBridge.updateLinkedAnchors(chainASignatureAnchor);
-    }
-
-    if (cmd.startsWith('relay from b to a')) {
-      await (chainBSignatureAnchor as unknown as Anchor).update(chainBSignatureAnchor.latestSyncedBlock);
-      await signatureBridge.updateLinkedAnchors(chainBSignatureAnchor);
     }
 
     if (cmd.startsWith('mint wrappable token on a')) {
@@ -352,12 +265,8 @@ async function main() {
       const chainAHandler = await chainASignatureAnchor.getHandler();
       console.log('Chain A Handler address: ', chainAHandler)
       console.log(
-        'ChainA fixed anchor (Hermes): ',
+        'ChainA variable anchor (Hermes): ',
         chainASignatureAnchor.contract.address
-      );
-      console.log(
-        'ChainA variable anchor: ',
-        vanchors[chainA.chainId].contract.address
       );
       console.log('ChainAToken: ', chainAToken.contract.address);
       console.log('ChainA Webb token (Hermes): ', webbASignatureToken.contract.address);
@@ -369,12 +278,8 @@ async function main() {
       const chainBHandler = await chainBSignatureAnchor.getHandler();
       console.log('Chain B Handler address: ', chainBHandler)
       console.log(
-        'ChainB fixed anchor (Athena): ',
+        'ChainB variable anchor (Athena): ',
         chainBSignatureAnchor.contract.address
-      );
-      console.log(
-        'ChainB variable anchor: ',
-        vanchors[chainB.chainId].contract.address
       );
       console.log('ChainBToken: ', chainBToken.contract.address);
       console.log('ChainB token Webb (Athena): ', webbBSignatureToken.contract.address);
@@ -386,12 +291,8 @@ async function main() {
       const chainCHandler = await chainCSignatureAnchor.getHandler();
       console.log('Chain C Handler address: ', chainCHandler)
       console.log(
-        'ChainC fixed anchor (Demeter): ',
+        'ChainC variable anchor (Demeter): ',
         chainCSignatureAnchor.contract.address
-      );
-      console.log(
-        'ChainC variable anchor: ',
-        vanchors[chainC.chainId].contract.address
       );
       console.log('ChainCToken: ', chainCToken.contract.address);
       console.log('ChainC token Webb (Demeter): ', webbCSignatureToken.contract.address);
@@ -455,10 +356,7 @@ async function main() {
 
 function printAvailableCommands() {
   console.log('Available commands:');
-  console.log('  fixed deposit on chain a');
-  console.log('  fixed deposit on chain b');
   console.log('  variable deposit on chain a');
-  console.log('  variable deposit on chain b');
   console.log('  mint wrappable token on a to "<address>"')
   console.log('  mint wrappable token on b to "<address>"')
   console.log('  mint governed token on a to "<address>"')

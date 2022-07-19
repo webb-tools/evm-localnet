@@ -1,6 +1,6 @@
-import { SignatureBridge } from '@webb-tools/bridges';
+import { VBridge, VBridgeInput } from '@webb-tools/vbridge';
 import { MintableToken } from "@webb-tools/tokens";
-import { getChainIdType, fetchComponentsFromFilePaths } from "@webb-tools/utils";
+import { getChainIdType, fetchComponentsFromFilePaths, ZkComponents } from "@webb-tools/utils";
 import { startGanacheServer } from '@webb-tools/test-utils';
 import { ethers } from "ethers";
 import { Server } from "ganache";
@@ -54,11 +54,11 @@ export class LocalChain {
   }
 
   // It is expected that parameters are passed with the same indices of arrays.
-  public static async deploySignatureBridge(
+  public static async deployVBridge(
     chains: LocalChain[],
     tokens: MintableToken[],
     wallets: ethers.Wallet[]
-  ): Promise<SignatureBridge> {
+  ): Promise<VBridge> {
     let assetRecord: Record<number, string[]> = {};
     let deployers: Record<number, ethers.Wallet> = {};
     let chainIdsArray: number[] = [];
@@ -70,12 +70,12 @@ export class LocalChain {
       chainIdsArray.push(chains[i].chainId);
     }
 
-    const bridgeInput = {
-      anchorInputs: {
+    const bridgeInput: VBridgeInput = {
+      vAnchorInputs: {
         asset: assetRecord,
-        anchorSizes: [ethers.utils.parseEther('1')],
       },
       chainIDs: chainIdsArray,
+      webbTokens: new Map()
     }
     const deployerConfig = { 
       ...deployers
@@ -88,26 +88,43 @@ export class LocalChain {
     console.log('deployerConfig: ', deployerConfig);
     console.log('governorConfig: ', deployerConfig);
 
-    const zkComponents = await fetchComponentsFromFilePaths(
-      path.resolve(
-        __dirname,
-        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/poseidon_anchor_${chains.length}.wasm`
-      ),
-      path.resolve(
-        __dirname,
-        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/witness_calculator.js`
-      ),
-      path.resolve(
-        __dirname,
-        `./protocol-solidity-fixtures/fixtures/anchor/${chains.length}/circuit_final.zkey`
-      )
-    );
+    const isEightSided = Object.keys(chains).length > 2;
 
-    return SignatureBridge.deployFixedDepositBridge(
+    let zkComponentsSmall: ZkComponents;
+    let zkComponentsLarge: ZkComponents;
+  
+    if (isEightSided) {
+      zkComponentsSmall = await fetchComponentsFromFilePaths(
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_2/8/poseidon_vanchor_2_8.wasm'),
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_2/8/witness_calculator.js'),
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_2/8/circuit_final.zkey')
+      );
+  
+      zkComponentsLarge = await fetchComponentsFromFilePaths(
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_16/8/poseidon_vanchor_16_8.wasm'),
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_16/8/witness_calculator.js'),
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_16/8/circuit_final.zkey')
+      );
+    } else {
+      zkComponentsSmall = await fetchComponentsFromFilePaths(
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_2/2/poseidon_vanchor_2_2.wasm'),
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_2/2/witness_calculator.js'),
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_2/2/circuit_final.zkey')
+      );
+  
+      zkComponentsLarge = await fetchComponentsFromFilePaths(
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_16/2/poseidon_vanchor_16_2.wasm'),
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_16/2/witness_calculator.js'),
+        path.resolve(__dirname, './protocol-solidity-fixtures/fixtures/vanchor_16/2/circuit_final.zkey')
+      );
+    }
+
+    return VBridge.deployVariableAnchorBridge(
       bridgeInput,
       deployerConfig,
       governorConfig,
-      zkComponents
+      zkComponentsSmall,
+      zkComponentsLarge
     );
   }
 }
