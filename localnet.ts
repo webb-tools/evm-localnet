@@ -2,7 +2,7 @@
 require('dotenv').config();
 import readline from 'readline';
 import { ethers } from 'ethers';
-import { MintableToken } from '@webb-tools/tokens';
+import { GovernedTokenWrapper, MintableToken } from '@webb-tools/tokens';
 import { getChainIdType } from '@webb-tools/utils';
 import { fundAccounts } from './fundAccounts';
 import { CircomUtxo } from '@webb-tools/sdk-core';
@@ -184,10 +184,6 @@ async function main() {
     chainC.stop();
   });
 
-  // Give token permissions to the newly created VAnchor:
-  // await webbASignatureToken.approveSpending('0xb824C5F99339C7E486a1b452B635886BE82bc8b7');
-  // await webbBSignatureToken.approveSpending('0xFEe587E68c470DAE8147B46bB39fF230A29D4769');
-
   // mint wrappable and governed tokens to pre-funded accounts
   await fundAccounts(
     {
@@ -235,6 +231,14 @@ async function main() {
         '0',
         chainAWallet
       );
+    }
+
+    if (cmd.startsWith('add wrappable token to a')) {
+      const governedToken = await GovernedTokenWrapper.connect(webbASignatureTokenAddress, chainAWallet);
+      const newWrappableToken = await MintableToken.createToken('localETH', 'localETH', chainAWallet);
+      // address of private key
+      await newWrappableToken.mintTokens('0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF', '100000000000000000000');
+      await chainASignatureBridge.executeAddTokenProposalWithSig(governedToken, newWrappableToken.contract.address);
     }
 
     if (cmd.startsWith('mint wrappable token on a')) {
@@ -328,14 +332,14 @@ async function main() {
 
     if (cmd.startsWith('print governor on chain a')) {
       const governor = chainASignatureBridge.governor;
-      console.log('governor in chainASigBridge class is: ', governor.address);
+      console.log('governor in chainASigBridge class is: ', (governor as ethers.Wallet).address);
       const walletAddress = await chainASignatureBridge.contract.governor();
       console.log('governor in contract is: ', walletAddress);
     }
 
     if (cmd.startsWith('print governor on chain b')) {
       const governor = chainBSignatureBridge.governor;
-      console.log('governor in chainASigBridge class is: ', governor.address);
+      console.log('governor in chainASigBridge class is: ', (governor as ethers.Wallet).address);
       const walletAddress = await chainBSignatureBridge.contract.governor();
       console.log('governor in contract is: ', walletAddress);
     }
@@ -357,6 +361,7 @@ async function main() {
 function printAvailableCommands() {
   console.log('Available commands:');
   console.log('  variable deposit on chain a');
+  console.log('  add wrappable token to a');
   console.log('  mint wrappable token on a to "<address>"')
   console.log('  mint wrappable token on b to "<address>"')
   console.log('  mint governed token on a to "<address>"')

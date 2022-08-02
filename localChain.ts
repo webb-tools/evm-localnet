@@ -61,12 +61,14 @@ export class LocalChain {
   ): Promise<VBridge> {
     let assetRecord: Record<number, string[]> = {};
     let deployers: Record<number, ethers.Wallet> = {};
+    let governors: Record<number, string> = {};
     let chainIdsArray: number[] = [];
 
     for (let i=0; i<chains.length; i++) {
       wallets[i].connect(chains[i].provider());
       assetRecord[chains[i].chainId] = [tokens[i].contract.address];
       deployers[chains[i].chainId] = wallets[i];
+      governors[chains[i].chainId] = await wallets[i].getAddress();
       chainIdsArray.push(chains[i].chainId);
     }
 
@@ -81,12 +83,8 @@ export class LocalChain {
       ...deployers
     }
     const governorConfig = {
-      ...deployers
+      ...governors
     }
-
-    console.log('bridgeInput: ', bridgeInput);
-    console.log('deployerConfig: ', deployerConfig);
-    console.log('governorConfig: ', deployerConfig);
 
     const isEightSided = Object.keys(chains).length > 2;
 
