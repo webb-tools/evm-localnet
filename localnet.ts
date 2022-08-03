@@ -232,6 +232,7 @@ async function main() {
         '0',
         chainAWallet
       );
+      return;
     }
 
     if (cmd.startsWith('transfer ownership to governor')) {
@@ -245,6 +246,7 @@ async function main() {
       await tx.wait();
       tx = await chainCSignatureBridge.transferOwnership(governorAddress, 0);
       await tx.wait();
+      return;
     }
 
     if (cmd.startsWith('add wrappable token to a')) {
@@ -253,26 +255,31 @@ async function main() {
       // address of private key
       await newWrappableToken.mintTokens('0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF', '100000000000000000000');
       await chainASignatureBridge.executeAddTokenProposalWithSig(governedToken, newWrappableToken.contract.address);
+      return;
     }
 
     if (cmd.startsWith('mint wrappable token on a')) {
       const address = cmd.split('"')[1];
       await chainAToken.mintTokens(address, '100000000000000000000');
+      return;
     }
 
     if (cmd.startsWith('mint wrappable token on b')) {
       const address = cmd.split('"')[1];
       await chainBToken.mintTokens(address, '100000000000000000000');
+      return;
     }
 
     if (cmd.startsWith('mint governed token on a')) {
       const address = cmd.split('"')[1];
       await webbASignatureToken.mintTokens(address, '100000000000000000000');
+      return;
     }
 
     if (cmd.startsWith('mint governed token on b')) {
       const address = cmd.split('"')[1];
       await webbBSignatureToken.mintTokens(address, '100000000000000000000');
+      return;
     }
 
     if (cmd.startsWith('print config')) {
@@ -316,6 +323,7 @@ async function main() {
       console.log('ChainC token Webb (Demeter): ', webbCSignatureToken.contract.address);
 
       console.log('\n');
+      return;
     }
 
     if (cmd.startsWith('print root on chain a')) {
@@ -349,6 +357,7 @@ async function main() {
       console.log('governor in chainASigBridge class is: ', (governor as ethers.Wallet).address);
       const walletAddress = await chainASignatureBridge.contract.governor();
       console.log('governor in contract is: ', walletAddress);
+      return;
     }
 
     if (cmd.startsWith('print governor on chain b')) {
@@ -356,6 +365,7 @@ async function main() {
       console.log('governor in chainASigBridge class is: ', (governor as ethers.Wallet).address);
       const walletAddress = await chainBSignatureBridge.contract.governor();
       console.log('governor in contract is: ', walletAddress);
+      return;
     }
 
     if (cmd === 'exit') {
