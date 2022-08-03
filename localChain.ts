@@ -24,7 +24,7 @@ export class LocalChain {
     const endpoint = `http://localhost:${evmId}`;
     const chainId = getChainIdType(evmId);
     const server = await startGanacheServer(evmId, evmId, initalBalances, {
-      quiet: false,
+      quiet: true,
       miner: {
         blockTime: 1,
       },
