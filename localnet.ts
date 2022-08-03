@@ -7,6 +7,7 @@ import { getChainIdType } from '@webb-tools/utils';
 import { fundAccounts } from './fundAccounts';
 import { CircomUtxo } from '@webb-tools/sdk-core';
 import { LocalChain } from './localChain';
+import { ethAddressFromUncompressedPublicKey, uncompressPublicKey } from './ethHelperFunctions';
 
 export type GanacheAccounts = {
   balance: string;
@@ -233,6 +234,19 @@ async function main() {
       );
     }
 
+    if (cmd.startsWith('transfer ownership to governor')) {
+      const compressedKey = cmd.split('"')[1];
+      const uncompressedKey = uncompressPublicKey(compressedKey);
+      const governorAddress = ethAddressFromUncompressedPublicKey(uncompressedKey);
+
+      let tx = await chainASignatureBridge.transferOwnership(governorAddress, 0);
+      await tx.wait();
+      tx = await chainBSignatureBridge.transferOwnership(governorAddress, 0);
+      await tx.wait();
+      tx = await chainCSignatureBridge.transferOwnership(governorAddress, 0);
+      await tx.wait();
+    }
+
     if (cmd.startsWith('add wrappable token to a')) {
       const governedToken = await GovernedTokenWrapper.connect(webbASignatureTokenAddress, chainAWallet);
       const newWrappableToken = await MintableToken.createToken('localETH', 'localETH', chainAWallet);
@@ -361,6 +375,7 @@ async function main() {
 function printAvailableCommands() {
   console.log('Available commands:');
   console.log('  variable deposit on chain a');
+  console.log('  transfer ownership to governor "<compressed dkg key>"');
   console.log('  add wrappable token to a');
   console.log('  mint wrappable token on a to "<address>"')
   console.log('  mint wrappable token on b to "<address>"')
