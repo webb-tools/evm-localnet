@@ -10,28 +10,28 @@
     "blank": "npx ts-node blanknet.ts"
   },
   "resolutions": {
-    "@webb-tools/anchors": "0.2.5",
-    "@webb-tools/bridges": "0.2.5",
-    "@webb-tools/contracts": "0.2.5",
-    "@webb-tools/interfaces": "0.2.5",
-    "@webb-tools/tokens": "0.2.5",
-    "@webb-tools/utils": "0.2.5",
-    "@webb-tools/vbridge": "0.2.5"
+    "@webb-tools/anchors": "0.2.4",
+    "@webb-tools/bridges": "0.2.4",
+    "@webb-tools/contracts": "0.2.3",
+    "@webb-tools/interfaces": "0.2.4",
+    "@webb-tools/tokens": "0.2.3",
+    "@webb-tools/utils": "0.2.2",
+    "@webb-tools/vbridge": "0.2.4"
   },
   "dependencies": {
-    "@webb-tools/anchors": "0.2.5",
-    "@webb-tools/bridges": "0.2.5",
-    "@webb-tools/contracts": "0.2.5",
-    "@webb-tools/interfaces": "0.2.5",
-    "@webb-tools/sdk-core": "0.1.4-98",
-    "@webb-tools/test-utils": "0.1.4-98",
-    "@webb-tools/tokens": "0.2.5",
-    "@webb-tools/utils": "0.2.5",
-    "@webb-tools/vbridge": "0.2.5",
+    "@webb-tools/anchors": "0.2.4",
+    "@webb-tools/bridges": "0.2.4",
+    "@webb-tools/contracts": "0.2.3",
+    "@webb-tools/interfaces": "0.2.4",
+    "@webb-tools/sdk-core": "0.1.4-90",
+    "@webb-tools/test-utils": "0.1.4-90",
+    "@webb-tools/tokens": "0.2.3",
+    "@webb-tools/utils": "0.2.2",
+    "@webb-tools/vbridge": "0.2.4",
     "dotenv": "^10.0.0",
-    "ecpair": "^1.0.0",
-    "ethers": "5.5.4",
-    "ganache": "7.4.1",
+		"ecpair": "^1.0.0",
+    "ethers": "5.5.1",
+    "ganache": "7.1.0",
     "node-fetch": "^2.6.1"
   },
   "devDependencies": {
@@ -40,6 +40,7 @@
     "prettier": "^2.5.1",
     "ts-node": "^10.7.0",
     "tsconfig-paths": "^3.9.0",
-    "typescript": "^4.6.2"
+    "typescript": "^4.6.2",
+    "chai": "^4.3.6"
   }
 }
