@@ -37,10 +37,6 @@ export class LocalChain {
     return new ethers.providers.WebSocketProvider(this.endpoint);
   }
 
-  public web3Provider(): ethers.providers.Web3Provider {
-    return new ethers.providers.Web3Provider(this.server.provider);
-  }
-
   public async stop() {
     this.server.close();
   }

@@ -230,6 +230,7 @@ async function main() {
         '0',
         '0',
         '0',
+        '0',
         chainAWallet
       );
       return;
