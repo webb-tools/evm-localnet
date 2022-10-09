@@ -242,14 +242,13 @@ async function main() {
       // console.log('wrappedAndDeposited')
         // Should be able to retrieve individual anchors
         const blinding = BigNumber.from('1010100')
-        const vAnchor0: OpenVAnchor = signatureBridge.getVAnchor(chainA.chainId)! as OpenVAnchor;
-        const vAnchor1: OpenVAnchor = signatureBridge.getVAnchor(chainB.chainId)! as OpenVAnchor;
         let tokenName: string = 'existingERC19';
         let tokenAbbreviation: string = 'EXIST';
-        let sender = chainAWallet
+
+        const vAnchor0: OpenVAnchor = signatureBridge.getVAnchor(chainA.chainId)! as OpenVAnchor;
+        const vAnchor1: OpenVAnchor = signatureBridge.getVAnchor(chainB.chainId)! as OpenVAnchor;
 
         console.log('variables defined')
-        const tokenInstance1 = await MintableToken.createToken(tokenName, tokenAbbreviation, sender);
 
         console.log('tokenInstance1 deployed')
         const webbTokenAddress2 = signatureBridge.getWebbTokenAddress(chainB.chainId);
@@ -271,14 +270,15 @@ async function main() {
           BigNumber.from('2000000000000000000000').toString()
         );
 
+        console.log('webbToken2 deployed')
         await vAnchor1.setSigner(chainAWallet);
-        await vAnchor1.wrapAndDeposit(
+        await vAnchor1.contract.wrapAndDeposit(
           chainB.chainId,
           BigNumber.from(100),
           await chainBWallet.getAddress(),
           '0x00',
           blinding,
-          tokenInstance1.contract.address,
+          webbTokenAddress1,
         );
         return;
     }
