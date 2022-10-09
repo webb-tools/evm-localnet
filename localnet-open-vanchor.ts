@@ -10,6 +10,7 @@ import { fundAccounts } from './fundAccounts';
 import { CircomUtxo } from '@webb-tools/sdk-core';
 import { LocalChain } from './localChain';
 import { ethAddressFromUncompressedPublicKey, uncompressPublicKey } from './ethHelperFunctions';
+const assert = require('assert')
 
 export type GanacheAccounts = {
   balance: string;
@@ -223,24 +224,63 @@ async function main() {
     const cmd = cmdRaw.trim();
 
     if (cmd.startsWith('variable deposit from chainA to chainB')) {
-      const depositAmount = BigNumber.from('100')
-      const destChainId = await getChainIdType(5002)
-      const recipient = await chainBWallet.getAddress()
-      const delegatedCalldata = '0x00'
-      const blinding = BigNumber.from('1010101')
-      const vanchor1: OpenVAnchor = await signatureBridge.getVAnchor(chainA.chainId)! as OpenVAnchor;
-      console.log('variables are defined')
-      await vanchor1.setSigner(chainAWallet)
-      await vanchor1.wrapAndDeposit(
-          destChainId,
-          depositAmount,
-          recipient,
-          delegatedCalldata,
+      // const depositAmount = BigNumber.from('100')
+      // const destChainId = await getChainIdType(5002)
+      // const recipient = await chainBWallet.getAddress()
+      // const delegatedCalldata = '0x00'
+      // const vanchor1: OpenVAnchor = await signatureBridge.getVAnchor(chainA.chainId)! as OpenVAnchor;
+      // console.log('variables are defined')
+      // await vanchor1.setSigner(chainAWallet)
+      // await vanchor1.wrapAndDeposit(
+      //     destChainId,
+      //     depositAmount,
+      //     recipient,
+      //     delegatedCalldata,
+      //     blinding,
+      //     await webbASignatureToken.contract.address
+      // );
+      // console.log('wrappedAndDeposited')
+        // Should be able to retrieve individual anchors
+        const blinding = BigNumber.from('1010100')
+        const vAnchor0: OpenVAnchor = signatureBridge.getVAnchor(chainA.chainId)! as OpenVAnchor;
+        const vAnchor1: OpenVAnchor = signatureBridge.getVAnchor(chainB.chainId)! as OpenVAnchor;
+        let tokenName: string = 'existingERC19';
+        let tokenAbbreviation: string = 'EXIST';
+        let sender = chainAWallet
+
+        console.log('variables defined')
+        const tokenInstance1 = await MintableToken.createToken(tokenName, tokenAbbreviation, sender);
+
+        console.log('tokenInstance1 deployed')
+        const webbTokenAddress2 = signatureBridge.getWebbTokenAddress(chainB.chainId);
+        const webbToken2 = await MintableToken.tokenFromAddress(webbTokenAddress2!, chainBWallet);
+        console.log('webbToken2 deployed')
+        const WalletBBalanceBefore = await webbToken2.getBalance(await chainBWallet.getAddress());
+        assert.strictEqual(
+          BigNumber.from(WalletBBalanceBefore).toString(),
+          BigNumber.from('2000000000000000000000').toString()
+        );
+
+        const webbTokenAddress1 = signatureBridge.getWebbTokenAddress(chainA.chainId);
+        console.log('webbToken1 address: ', webbTokenAddress1)
+        const webbToken1 = await MintableToken.tokenFromAddress(webbTokenAddress1!, chainAWallet);
+        console.log('webbToken1 deployed')
+        const recipientBalanceBefore = await webbToken1.getBalance(await chainBWallet.getAddress());
+        assert.strictEqual(
+          BigNumber.from(recipientBalanceBefore).toString(),
+          BigNumber.from('2000000000000000000000').toString()
+        );
+
+        await vAnchor1.setSigner(chainAWallet);
+        await vAnchor1.wrapAndDeposit(
+          chainB.chainId,
+          BigNumber.from(100),
+          await chainBWallet.getAddress(),
+          '0x00',
           blinding,
-          await webbASignatureToken.contract.address
-      );
-      console.log('wrappedAndDeposited')
-      return;
+          tokenInstance1.contract.address,
+        );
+        return;
     }
 
     if (cmd.startsWith('transfer ownership to governor')) {
