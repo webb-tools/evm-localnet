@@ -1,4 +1,0 @@
-[submodule "protocol-solidity-fixtures"]
-	path = protocol-solidity-fixtures
-	url = git@github.com:webb-tools/protocol-solidity-fixtures.git
-	shallow = true
