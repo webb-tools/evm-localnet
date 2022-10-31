@@ -1,0 +1,12 @@
+md5: 349e4f12cbb747524564ed71537bedeb
+frozen: true
+deps:
+- path: solidity-fixtures
+  repo:
+    url: https://github.com/webb-tools/solidity-fixtures
+    rev_lock: 9ca5745e9feea64823f4a10fe25723660d0a564c
+outs:
+- md5: f9f24da59cd10316fccfaf6511305d0b.dir
+  size: 1467579369
+  nfiles: 97
+  path: solidity-fixtures

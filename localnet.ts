@@ -5,8 +5,9 @@ import { ethers } from 'ethers';
 import { GovernedTokenWrapper, MintableToken } from '@webb-tools/tokens';
 import { getChainIdType } from '@webb-tools/utils';
 import { fundAccounts } from './fundAccounts';
-import { CircomUtxo } from '@webb-tools/sdk-core';
-import { LocalChain } from './localChain';
+import { calculateTypedChainId, CircomUtxo } from '@webb-tools/sdk-core';
+import { LocalEvmChain } from '@webb-tools/test-utils';
+import { getZkComponents } from './getZkComponents';
 import { ethAddressFromUncompressedPublicKey, uncompressPublicKey } from './ethHelperFunctions';
 
 export type GanacheAccounts = {
@@ -20,7 +21,7 @@ async function main() {
   const senderPrivateKey =
     '0x0000000000000000000000000000000000000000000000000000000000000002';
 
-  const chainA = await LocalChain.init('Hermes', 5001, [
+  const chainA = await LocalEvmChain.init('Hermes', 5001, [
     {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: relayerPrivateKey,
@@ -33,8 +34,11 @@ async function main() {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: '0xc0d375903fd6f6ad3edafc2c5428900c0757ce1da10e5dd864fe387b32b91d7e',
     },
-  ]);
-  const chainB = await LocalChain.init('Athena', 5002, [
+  ],
+  {
+    quiet: false
+  });
+  const chainB = await LocalEvmChain.init('Athena', 5002, [
     {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: relayerPrivateKey,
@@ -47,8 +51,11 @@ async function main() {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: '0xc0d375903fd6f6ad3edafc2c5428900c0757ce1da10e5dd864fe387b32b91d7e',
     },
-  ]);
-  const chainC = await LocalChain.init('Demeter', 5003, [
+  ],
+  {
+    quiet: false
+  });
+  const chainC = await LocalEvmChain.init('Demeter', 5003, [
     {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: relayerPrivateKey,
@@ -61,7 +68,10 @@ async function main() {
       balance: ethers.utils.parseEther('1000').toHexString(),
       secretKey: '0xc0d375903fd6f6ad3edafc2c5428900c0757ce1da10e5dd864fe387b32b91d7e',
     },
-  ]);
+  ],
+  {
+    quiet: false
+  });
   const chainAWallet = new ethers.Wallet(relayerPrivateKey, chainA.provider());
   const chainBWallet = new ethers.Wallet(relayerPrivateKey, chainB.provider());
   const chainCWallet = new ethers.Wallet(relayerPrivateKey, chainC.provider());
@@ -91,24 +101,29 @@ async function main() {
   // Deploy the token on chainC
   const chainCToken = await chainC.deployToken('ChainC', 'webbC', chainCWallet);
 
+  // get the fixtures for an eight sided deployment:
+  const { smallFixtures, largeFixtures } = await getZkComponents(3);
+
   // Deploy the signature bridge.
-  const signatureBridge = await LocalChain.deployVBridge(
+  const signatureBridge = await LocalEvmChain.deployVBridge(
     [chainA, chainB, chainC],
     [chainAToken, chainBToken, chainCToken],
-    [chainAWallet, chainBWallet, chainCWallet]
+    [chainAWallet, chainBWallet, chainCWallet],
+    smallFixtures,
+    largeFixtures
   );
 
   // get chainA bridge
-  const chainASignatureBridge = signatureBridge.getVBridgeSide(chainA.chainId)!;
+  const chainASignatureBridge = signatureBridge.getVBridgeSide(chainA.typedChainId)!;
   // get chainB bridge
-  const chainBSignatureBridge = signatureBridge.getVBridgeSide(chainB.chainId)!;
+  const chainBSignatureBridge = signatureBridge.getVBridgeSide(chainB.typedChainId)!;
   console.log('sigBridgeB address: ', chainBSignatureBridge.contract.address);
   // get chainC bridge
-  const chainCSignatureBridge = signatureBridge.getVBridgeSide(chainC.chainId)!;
+  const chainCSignatureBridge = signatureBridge.getVBridgeSide(chainC.typedChainId)!;
 
   // get the anchor on chainA
   const chainASignatureAnchor = signatureBridge.getVAnchor(
-    chainA.chainId,
+    chainA.typedChainId,
   )!;
   await chainASignatureAnchor.setSigner(chainAWallet);
 
@@ -117,7 +132,7 @@ async function main() {
 
   // get the anchor on chainB
   const chainBSignatureAnchor = signatureBridge.getVAnchor(
-    chainB.chainId,
+    chainB.typedChainId,
   )!;
   await chainBSignatureAnchor.setSigner(chainBWallet);
 
@@ -126,7 +141,7 @@ async function main() {
   
   // get the anchor on chainC
   const chainCSignatureAnchor = signatureBridge.getVAnchor(
-    chainC.chainId,
+    chainC.typedChainId,
   )!;
   await chainCSignatureAnchor.setSigner(chainCWallet);
 
@@ -135,7 +150,7 @@ async function main() {
 
   // approve token spending
   const webbASignatureTokenAddress = signatureBridge.getWebbTokenAddress(
-    chainA.chainId
+    chainA.typedChainId
   )!;
 
   const webbASignatureToken = await MintableToken.tokenFromAddress(
@@ -151,7 +166,7 @@ async function main() {
     ethers.utils.parseEther('1000')
   );
 
-  const webbBSignatureTokenAddress = signatureBridge.getWebbTokenAddress(chainB.chainId)!;
+  const webbBSignatureTokenAddress = signatureBridge.getWebbTokenAddress(chainB.typedChainId)!;
   console.log('webbBTokenAddress: ', webbBSignatureTokenAddress);
 
   const webbBSignatureToken = await MintableToken.tokenFromAddress(
@@ -165,7 +180,7 @@ async function main() {
     ethers.utils.parseEther('1000')
   );
 
-  const webbCSignatureTokenAddress = signatureBridge.getWebbTokenAddress(chainC.chainId)!;
+  const webbCSignatureTokenAddress = signatureBridge.getWebbTokenAddress(chainC.typedChainId)!;
 
   const webbCSignatureToken = await MintableToken.tokenFromAddress(
     webbCSignatureTokenAddress,
@@ -188,14 +203,14 @@ async function main() {
   // mint wrappable and governed tokens to pre-funded accounts
   await fundAccounts(
     {
-      [chainA.chainId]: chainAToken,
-      [chainB.chainId]: chainBToken,
-      [chainC.chainId]: chainCToken,
+      [chainA.typedChainId]: chainAToken,
+      [chainB.typedChainId]: chainBToken,
+      [chainC.typedChainId]: chainCToken,
     },
     {
-      [chainA.chainId]: webbASignatureToken,
-      [chainB.chainId]: webbBSignatureToken,
-      [chainC.chainId]: webbCSignatureToken,
+      [chainA.typedChainId]: webbASignatureToken,
+      [chainB.typedChainId]: webbBSignatureToken,
+      [chainC.typedChainId]: webbCSignatureToken,
     },
     [
       '0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf',
@@ -215,7 +230,7 @@ async function main() {
   rl.on('line', async (cmdRaw) => {
     const cmd = cmdRaw.trim();
 
-    if (cmd.startsWith('variable deposit on chain a')) {
+    if (cmd.startsWith('deposit')) {
       const utxo = await CircomUtxo.generateUtxo({
         curve: 'Bn254',
         backend: 'Circom',
@@ -233,6 +248,30 @@ async function main() {
         '0',
         chainAWallet
       );
+
+      console.log('Utxo: ', utxo.serialize());
+      return;
+    }
+
+    if (cmd.startsWith('withdraw')) {
+      // The serialized utxo is the next arg
+      const utxoString = cmd.split(' ')[1];
+
+      const utxo = await CircomUtxo.deserialize(utxoString);
+      utxo.setOriginChainId(getChainIdType(5001).toString());
+      signatureBridge.getVBridgeSide(chainB.evmId);
+
+      await signatureBridge.transact(
+        [utxo],
+        [],
+        0,
+        0,
+        '0x0000000000000000000000000000000000000001',
+        '0',
+        chainBWallet
+      );
+
+      console.log('transact worked without crashing');
       return;
     }
 
@@ -391,7 +430,8 @@ async function main() {
 
 function printAvailableCommands() {
   console.log('Available commands:');
-  console.log('  variable deposit on chain a');
+  console.log('  deposit');
+  console.log('  withdraw <utxo string>')
   console.log('  transfer ownership to governor "<compressed dkg key>"');
   console.log('  add wrappable token to a');
   console.log('  mint wrappable token on a to "<address>"')
@@ -402,7 +442,6 @@ function printAvailableCommands() {
   console.log('  print root on chain a');
   console.log('  print root on chain b');
   console.log('  print governor on chain a');
-  console.log('  print governor on chain b');
   console.log('  exit');
 }
 
